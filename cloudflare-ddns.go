@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
@@ -135,9 +138,63 @@ func RecordUpdateWorker() {
 	}
 }
 
+//PROMPT FUNCTIONS
+//These functions ask the user for prompts to set enviroment variables
+
+//PromptAPIToken asks the user to paste their API Token
+func PromptAPIToken() {
+	fmt.Println("Please paste your API Token:")
+	reader := bufio.NewReader(os.Stdin)
+	apiKeyIn, _ := reader.ReadString('\n')
+	SetAPIToken(apiKeyIn)
+}
+
+//PromptZoneID asks the user to paste their Zone ID
+func PromptZoneID() {
+	fmt.Println("Please paste your Zone ID:")
+	reader := bufio.NewReader(os.Stdin)
+	ZoneIdIn, _ := reader.ReadString('\n')
+	SetZoneID(ZoneIdIn)
+}
+
+//PromptRecordID fetches a Zone's record and allows the user to input which one to update
+func PromptRecordID() {
+	//Blank record for search
+	var blankRecord cloudflare.DNSRecord
+	records, err := api.DNSRecords(ctx, zoneId, blankRecord)
+	if err != nil {
+		log.Fatal("Could not find DNS Records")
+	}
+
+	c := 0
+	for _, r := range records {
+		recordText := fmt.Sprintf("Type - %s, Content - %s", r.Type, r.Content)
+		fmt.Printf("%d: %s\n", c, recordText)
+		c++
+	}
+	fmt.Printf("Please enter the number 0-%d which is your desired record:\n", c)
+	reader := bufio.NewReader(os.Stdin)
+	selection, _ := reader.ReadString('\n')
+
+	sInt, err := strconv.Atoi(selection)
+	if err != nil {
+		log.Fatal("Not a valid record selection, exiting...")
+	}
+	recordId = records[sInt].Content
+}
+
 //Setup runs set ups functions to help set enviroment variables
 func Setup() {
+	GetAPIToken()
+	if apiToken == "" {
+		PromptAPIToken()
+	}
 
+	GetZoneID()
+	if zoneId == "" {
+		PromptZoneID()
+	}
+	GetRecordID()
 }
 
 func main() {
@@ -158,6 +215,11 @@ func main() {
 	api, err = cloudflare.NewWithAPIToken(apiToken)
 	if err != nil {
 		log.Fatal("Could not start Cloudflare API")
+	}
+
+	//Need to set the record ID now the API is set up
+	if recordId == "" {
+		PromptRecordID()
 	}
 
 	//Set the context
