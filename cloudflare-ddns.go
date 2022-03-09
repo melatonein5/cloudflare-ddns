@@ -80,19 +80,32 @@ func fetchIP() error {
 }
 
 //Compare IP will check if the current IP matches the DNS records and return true if it does not
-func CompareIPToRecord(zoneId, recordID string) bool {
+func CompareIPToRecord(zoneID, recordID string) (cloudflare.DNSRecord, bool) {
+	var dnsRecord cloudflare.DNSRecord
 	//Make an API request to cloudflare to get the IP address in the A record
-	dnsRecord, err := api.DNSRecord(ctx, zoneId, recordID)
+	dnsRecord, err := api.DNSRecord(ctx, zoneID, recordID)
 	if err != nil {
 		log.Println("Could not fetch DNS Record! Is the API key valid? Does it have the right permissions?")
-		return false
+		return dnsRecord, false
 	}
 
 	//Compare IPs
 	if dnsRecord.Data == ip.Query {
-		return false
+		return dnsRecord, false
 	}
-	return true
+
+	return dnsRecord, true
+}
+
+//UpdateDNSRecords updates an A record with the current IP
+func UpdateDNSRecord(oldRecord cloudflare.DNSRecord, zoneID, recordID string) error {
+	//Change the old record IP and send it
+	oldRecord.Content = ip.Query
+	err := api.UpdateDNSRecord(ctx, zoneID, recordID, oldRecord)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func main() {
