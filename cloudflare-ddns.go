@@ -121,6 +121,7 @@ func UpdateDNSRecord(oldRecord cloudflare.DNSRecord) error {
 	return nil
 }
 
+//RecordUpdateWorker is the main loop which matches the IP and changes the DNS record when nesscary
 func RecordUpdateWorker() {
 	for {
 		//Fetch the current IP
@@ -143,9 +144,15 @@ func main() {
 	defer f.Close()
 
 	log.SetOutput(f)
+
+	//Choose the startup options
+
 	//Declare the API
 	GetAPIToken()
-	api, _ = cloudflare.NewWithAPIToken(apiToken)
+	api, err = cloudflare.NewWithAPIToken(apiToken)
+	if err != nil {
+		log.Fatal("Could not start Cloudflare API")
+	}
 
 	//Set the context
 	ctx = context.Background()
