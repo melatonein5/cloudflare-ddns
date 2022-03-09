@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 
@@ -11,7 +13,10 @@ import (
 
 //Global variables
 var apiToken string
+var ctx context.Context
 var api *cloudflare.API
+var zoneId string
+var recordId string
 var ip IPQuery
 
 //Structures
@@ -34,6 +39,7 @@ type IPQuery struct {
 
 //Functions
 
+//Get and Set
 //GetAPIToken will search for a system variable and pull the API key to set in the program
 func GetAPIToken() {
 	apiToken = os.Getenv("CLOUDFLARE_API_TOKEN")
@@ -44,6 +50,15 @@ func SetAPIToken(token string) {
 	os.Setenv("CLOUDFLARE_API_TOKEN", token)
 }
 
+func GetZoneID() {
+	apiToken = os.Getenv("CLOUDFLARE_ZONE_ID")
+}
+
+func GetRecordID() {
+	apiToken = os.Getenv("CLOUDFLARE_RECORD_ID")
+}
+
+//Main Functions
 //fetchIP will get the users current public IP address
 func fetchIP() error {
 	//Make a request to an endpoint which will return a user's public IP
@@ -64,6 +79,22 @@ func fetchIP() error {
 	return nil
 }
 
+//Compare IP will check if the current IP matches the DNS records and return true if it does not
+func CompareIPToRecord(zoneId, recordID string) bool {
+	//Make an API request to cloudflare to get the IP address in the A record
+	dnsRecord, err := api.DNSRecord(ctx, zoneId, recordID)
+	if err != nil {
+		log.Println("Could not fetch DNS Record! Is the API key valid? Does it have the right permissions?")
+		return false
+	}
+
+	//Compare IPs
+	if dnsRecord.Data == ip.Query {
+		return false
+	}
+	return true
+}
+
 func main() {
 	//Startup options
 
@@ -72,4 +103,7 @@ func main() {
 	//Declare the API
 	GetAPIToken()
 	api, _ = cloudflare.NewWithAPIToken(apiToken)
+
+	//Set the context
+	ctx = context.Background()
 }
