@@ -135,6 +135,11 @@ func RecordUpdateWorker() {
 	}
 }
 
+//Setup runs set ups functions to help set enviroment variables
+func Setup() {
+
+}
+
 func main() {
 	//Set logging location
 	f, err := os.OpenFile("cloudflare-ddns.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -146,6 +151,7 @@ func main() {
 	log.SetOutput(f)
 
 	//Choose the startup options
+	Setup()
 
 	//Declare the API
 	GetAPIToken()
